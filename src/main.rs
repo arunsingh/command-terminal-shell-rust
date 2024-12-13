@@ -21,8 +21,5 @@ fn main() {
 
         // For now, all commands are treated as invalid
         println!("{}: command not found", command);
-
-        // Exit after handling the command (as specified for this stage)
-        break;
     }
 }
