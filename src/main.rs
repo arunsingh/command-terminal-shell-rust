@@ -39,7 +39,7 @@ fn main() {
             } else if command == "type" {
                 if let Some(queried_command) = parts.next() {
                     match queried_command {
-                        "echo" | "exit" | "type" | "pwd" => println!("{} is a shell builtin", queried_command),
+                        "echo" | "exit" | "type" | "pwd" | "cd" => println!("{} is a shell builtin", queried_command),
                         _ => {
                             if let Some(path) = find_executable(queried_command) {
                                 println!("{} is {}", queried_command, path);
@@ -56,6 +56,20 @@ fn main() {
                 match env::current_dir() {
                     Ok(path) => println!("{}", path.display()),
                     Err(err) => eprintln!("pwd: error retrieving current directory: {}", err),
+                }
+                continue;
+            } else if command == "cd" {
+                if let Some(target_dir) = parts.next() {
+                    let path = Path::new(target_dir);
+                    if path.is_absolute() {
+                        if let Err(err) = env::set_current_dir(&path) {
+                            eprintln!("cd: {}: No such file or directory", target_dir);
+                        }
+                    } else {
+                        eprintln!("cd: only absolute paths are supported at this stage");
+                    }
+                } else {
+                    println!("cd: missing argument");
                 }
                 continue;
             }
