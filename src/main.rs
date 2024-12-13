@@ -31,6 +31,16 @@ fn main() {
             continue; // Prompt again after handling echo
         }
 
+        // Handle the "type" command
+        if command.starts_with("type ") {
+            let queried_command = &command[5..]; // Extract the part after "type "
+            match queried_command {
+                "echo" | "exit" | "type" => println!("{} is a shell builtin", queried_command),
+                _ => println!("{}: not found", queried_command),
+            }
+            continue; // Prompt again after handling type
+        }
+
         // For now, all other commands are treated as invalid
         println!("{}: command not found", command);
     }
