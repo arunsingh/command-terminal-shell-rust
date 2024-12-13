@@ -39,7 +39,7 @@ fn main() {
             } else if command == "type" {
                 if let Some(queried_command) = parts.next() {
                     match queried_command {
-                        "echo" | "exit" | "type" => println!("{} is a shell builtin", queried_command),
+                        "echo" | "exit" | "type" | "pwd" => println!("{} is a shell builtin", queried_command),
                         _ => {
                             if let Some(path) = find_executable(queried_command) {
                                 println!("{} is {}", queried_command, path);
@@ -50,6 +50,12 @@ fn main() {
                     }
                 } else {
                     println!("type: missing argument");
+                }
+                continue;
+            } else if command == "pwd" {
+                match env::current_dir() {
+                    Ok(path) => println!("{}", path.display()),
+                    Err(err) => eprintln!("pwd: error retrieving current directory: {}", err),
                 }
                 continue;
             }
