@@ -14,12 +14,17 @@ fn main() {
         // Trim the input to remove extra whitespace or newline characters
         let command = input.trim();
 
-        // Handle invalid commands
+        // Handle empty input
         if command.is_empty() {
             continue; // If no command is entered, prompt again
         }
 
-        // For now, all commands are treated as invalid
+        // Handle the "exit" command
+        if command == "exit 0" {
+            break; // Exit the REPL loop
+        }
+
+        // For now, all other commands are treated as invalid
         println!("{}: command not found", command);
     }
 }
