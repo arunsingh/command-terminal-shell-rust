@@ -1,4 +1,3 @@
-#[allow(unused_imports)]
 use std::io::{self, Write};
 
 fn main() {
@@ -7,27 +6,23 @@ fn main() {
         print!("$ ");
         io::stdout().flush().unwrap();
 
-        // Wait for user input
+        // Read user input
         let stdin = io::stdin();
         let mut input = String::new();
         stdin.read_line(&mut input).unwrap();
 
-        // Trim the input and check if it is empty
-        let input = input.trim();
-        if input.is_empty() {
-            continue;
+        // Trim the input to remove extra whitespace or newline characters
+        let command = input.trim();
+
+        // Handle invalid commands
+        if command.is_empty() {
+            continue; // If no command is entered, prompt again
         }
 
-        // Exit the shell on "exit" command
-        if input == "exit" {
-            println!("Exiting shell...");
-            break;
-        }
+        // For now, all commands are treated as invalid
+        println!("{}: command not found", command);
 
-        // Check for valid commands (in this simple example, only "hello" is valid)
-        match input {
-            "hello" => println!("Hello, world!"),
-            _ => println!("Error: '{}' is not a valid command", input),
-        }
+        // Exit after handling the command (as specified for this stage)
+        break;
     }
 }
