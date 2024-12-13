@@ -24,6 +24,13 @@ fn main() {
             break; // Exit the REPL loop
         }
 
+        // Handle the "echo" command
+        if command.starts_with("echo ") {
+            let message = &command[5..]; // Extract the part after "echo "
+            println!("{}", message);
+            continue; // Prompt again after handling echo
+        }
+
         // For now, all other commands are treated as invalid
         println!("{}: command not found", command);
     }
