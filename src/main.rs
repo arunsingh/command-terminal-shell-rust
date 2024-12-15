@@ -76,7 +76,7 @@ fn main() {
             }
 
             // Attempt to execute external commands
-            if let Some(path) = find_executable(command) {
+            if let Some(path) = find_executable(&command) {
                 let args: Vec<String> = parts.collect();
                 let status = Command::new(path)
                     .args(&args)
