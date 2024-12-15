@@ -28,20 +28,20 @@ fn main() {
             break; // Exit the REPL loop
         }
 
-        // Split the command line into the command and arguments
-        let mut parts = command_line.split_whitespace();
+        // Split the command line into the command and arguments, handling single quotes
+        let mut parts = split_command_with_quotes(command_line);
         if let Some(command) = parts.next() {
             // Handle built-in commands
             if command == "echo" {
-                let message: Vec<&str> = parts.collect();
+                let message: Vec<String> = parts.collect();
                 println!("{}", message.join(" "));
                 continue;
             } else if command == "type" {
                 if let Some(queried_command) = parts.next() {
-                    match queried_command {
+                    match queried_command.as_str() {
                         "echo" | "exit" | "type" | "pwd" | "cd" => println!("{} is a shell builtin", queried_command),
                         _ => {
-                            if let Some(path) = find_executable(queried_command) {
+                            if let Some(path) = find_executable(&queried_command) {
                                 println!("{} is {}", queried_command, path);
                             } else {
                                 println!("{}: not found", queried_command);
@@ -63,7 +63,7 @@ fn main() {
                     let path = if target_dir == "~" {
                         env::var("HOME").map_or_else(|_| Path::new("/").to_path_buf(), |s| Path::new(&s).to_path_buf())
                     } else {
-                        Path::new(target_dir).to_path_buf()
+                        Path::new(&target_dir).to_path_buf()
                     };
 
                     if let Err(err) = env::set_current_dir(&path) {
@@ -77,7 +77,7 @@ fn main() {
 
             // Attempt to execute external commands
             if let Some(path) = find_executable(command) {
-                let args: Vec<&str> = parts.collect();
+                let args: Vec<String> = parts.collect();
                 let status = Command::new(path)
                     .args(&args)
                     .status();
@@ -109,4 +109,39 @@ fn find_executable(command: &str) -> Option<String> {
         }
     }
     None
+}
+
+fn split_command_with_quotes(input: &str) -> impl Iterator<Item = String> {
+    let mut parts = vec![];
+    let mut current = String::new();
+    let mut in_quotes = false;
+
+    for c in input.chars() {
+        match c {
+            '\'' if in_quotes => {
+                // End of quoted segment
+                in_quotes = false;
+            }
+            '\'' if !in_quotes => {
+                // Start of quoted segment
+                in_quotes = true;
+            }
+            ' ' if !in_quotes => {
+                // End of a part
+                if !current.is_empty() {
+                    parts.push(current.clone());
+                    current.clear();
+                }
+            }
+            _ => {
+                current.push(c);
+            }
+        }
+    }
+
+    if !current.is_empty() {
+        parts.push(current);
+    }
+
+    parts.into_iter()
 }
