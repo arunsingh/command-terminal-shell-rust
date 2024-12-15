@@ -28,7 +28,7 @@ fn main() {
             break; // Exit the REPL loop
         }
 
-        // Split the command line into the command and arguments, handling single quotes
+        // Split the command line into the command and arguments, handling single and double quotes
         let mut parts = split_command_with_quotes(command_line);
         if let Some(command) = parts.next() {
             // Handle built-in commands
@@ -114,20 +114,26 @@ fn find_executable(command: &str) -> Option<String> {
 fn split_command_with_quotes(input: &str) -> impl Iterator<Item = String> {
     let mut parts = vec![];
     let mut current = String::new();
-    let mut in_quotes = false;
+    let mut in_single_quotes = false;
+    let mut in_double_quotes = false;
+    let mut escape_next = false;
 
     for c in input.chars() {
         match c {
-            '\'' if in_quotes => {
-                // End of quoted segment
-                in_quotes = false;
+            '\\' if in_double_quotes && !escape_next => {
+                escape_next = true; // Handle escape sequences in double quotes
             }
-            '\'' if !in_quotes => {
-                // Start of quoted segment
-                in_quotes = true;
+            '\\' if escape_next => {
+                current.push('\\');
+                escape_next = false;
             }
-            ' ' if !in_quotes => {
-                // End of a part
+            '"' if !in_single_quotes && !escape_next => {
+                in_double_quotes = !in_double_quotes;
+            }
+            '\'' if !in_double_quotes && !escape_next => {
+                in_single_quotes = !in_single_quotes;
+            }
+            ' ' if !in_single_quotes && !in_double_quotes => {
                 if !current.is_empty() {
                     parts.push(current.clone());
                     current.clear();
@@ -135,6 +141,7 @@ fn split_command_with_quotes(input: &str) -> impl Iterator<Item = String> {
             }
             _ => {
                 current.push(c);
+                escape_next = false;
             }
         }
     }
