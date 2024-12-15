@@ -61,7 +61,7 @@ fn main() {
             } else if command == "cd" {
                 if let Some(target_dir) = parts.next() {
                     let path = if target_dir == "~" {
-                        env::var("HOME").map_or_else(|_| Path::new("/").to_path_buf(), Path::new)
+                        env::var("HOME").map_or_else(|_| Path::new("/").to_path_buf(), |s| Path::new(&s).to_path_buf())
                     } else {
                         Path::new(target_dir).to_path_buf()
                     };
