@@ -60,13 +60,14 @@ fn main() {
                 continue;
             } else if command == "cd" {
                 if let Some(target_dir) = parts.next() {
-                    let path = Path::new(target_dir);
-                    if path.is_absolute() || path.is_relative() {
-                        if let Err(err) = env::set_current_dir(&path) {
-                            eprintln!("cd: {}: No such file or directory", target_dir);
-                        }
+                    let path = if target_dir == "~" {
+                        env::var("HOME").map_or_else(|_| Path::new("/").to_path_buf(), Path::new)
                     } else {
-                        eprintln!("cd: invalid path");
+                        Path::new(target_dir).to_path_buf()
+                    };
+
+                    if let Err(err) = env::set_current_dir(&path) {
+                        eprintln!("cd: {}: No such file or directory", target_dir);
                     }
                 } else {
                     println!("cd: missing argument");
