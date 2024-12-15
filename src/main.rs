@@ -28,7 +28,7 @@ fn main() {
             break; // Exit the REPL loop
         }
 
-        // Split the command line into the command and arguments, handling single and double quotes
+        // Split the command line into the command and arguments, handling single, double quotes, and backslashes
         let mut parts = split_command_with_quotes(command_line);
         if let Some(command) = parts.next() {
             // Handle built-in commands
@@ -120,8 +120,8 @@ fn split_command_with_quotes(input: &str) -> impl Iterator<Item = String> {
 
     for c in input.chars() {
         match c {
-            '\\' if in_double_quotes && !escape_next => {
-                escape_next = true; // Handle escape sequences in double quotes
+            '\\' if !escape_next => {
+                escape_next = true; // Handle escape sequences
             }
             '\\' if escape_next => {
                 current.push('\\');
@@ -133,7 +133,7 @@ fn split_command_with_quotes(input: &str) -> impl Iterator<Item = String> {
             '\'' if !in_double_quotes && !escape_next => {
                 in_single_quotes = !in_single_quotes;
             }
-            ' ' if !in_single_quotes && !in_double_quotes => {
+            ' ' if !in_single_quotes && !in_double_quotes && !escape_next => {
                 if !current.is_empty() {
                     parts.push(current.clone());
                     current.clear();
