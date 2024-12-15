@@ -120,18 +120,21 @@ fn split_command_with_quotes(input: &str) -> impl Iterator<Item = String> {
 
     for c in input.chars() {
         match c {
-            '\\' if !escape_next => {
-                escape_next = true; // Handle escape sequences
-            }
             '\\' if escape_next => {
                 current.push('\\');
                 escape_next = false;
             }
+            '\\' if in_double_quotes => {
+                escape_next = true; // Start an escape sequence
+            }
+            '\\' if !in_single_quotes => {
+                current.push('\\'); // Literal backslash outside quotes
+            }
             '"' if !in_single_quotes && !escape_next => {
-                in_double_quotes = !in_double_quotes;
+                in_double_quotes = !in_double_quotes; // Toggle double quotes
             }
             '\'' if !in_double_quotes && !escape_next => {
-                in_single_quotes = !in_single_quotes;
+                in_single_quotes = !in_single_quotes; // Toggle single quotes
             }
             ' ' if !in_single_quotes && !in_double_quotes && !escape_next => {
                 if !current.is_empty() {
