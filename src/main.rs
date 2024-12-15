@@ -61,12 +61,12 @@ fn main() {
             } else if command == "cd" {
                 if let Some(target_dir) = parts.next() {
                     let path = Path::new(target_dir);
-                    if path.is_absolute() {
+                    if path.is_absolute() || path.is_relative() {
                         if let Err(err) = env::set_current_dir(&path) {
                             eprintln!("cd: {}: No such file or directory", target_dir);
                         }
                     } else {
-                        eprintln!("cd: only absolute paths are supported at this stage");
+                        eprintln!("cd: invalid path");
                     }
                 } else {
                     println!("cd: missing argument");
