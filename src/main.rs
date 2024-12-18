@@ -121,33 +121,31 @@ fn split_command_with_quotes(input: &str) -> impl Iterator<Item = String> {
     for c in input.chars() {
         match c {
             '\\' if escape_next => {
+                // Handle escaped backslash
                 current.push('\\');
                 escape_next = false;
             }
-            '\\' if in_double_quotes => {
-                escape_next = true; // Start an escape sequence inside double quotes
-            }
-            '\\' if !in_single_quotes => {
-                current.push('\\'); // Literal backslash outside quotes
+            '\\' if in_double_quotes || !in_single_quotes => {
+                // Start escape sequence
+                escape_next = true;
             }
             '"' if !in_single_quotes && !escape_next => {
-                in_double_quotes = !in_double_quotes; // Toggle double quotes
+                // Toggle double quotes
+                in_double_quotes = !in_double_quotes;
             }
             '\'' if !in_double_quotes && !escape_next => {
-                in_single_quotes = !in_single_quotes; // Toggle single quotes
+                // Toggle single quotes
+                in_single_quotes = !in_single_quotes;
             }
             ' ' if !in_single_quotes && !in_double_quotes && !escape_next => {
+                // Split arguments
                 if !current.is_empty() {
                     parts.push(current.clone());
                     current.clear();
                 }
             }
             c if escape_next => {
-                // Handle escapable sequences
-                match c {
-                    '"' | '\\' | '$' => current.push(c), // Escapable characters
-                    _ => current.push('\\'), // Preserve the backslash if not escapable
-                }
+                // Escape sequence for specific characters or treat backslash as literal
                 current.push(c);
                 escape_next = false;
             }
@@ -164,6 +162,3 @@ fn split_command_with_quotes(input: &str) -> impl Iterator<Item = String> {
 
     parts.into_iter()
 }
-
-
-
