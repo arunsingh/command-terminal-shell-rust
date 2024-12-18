@@ -125,7 +125,7 @@ fn split_command_with_quotes(input: &str) -> impl Iterator<Item = String> {
                 escape_next = false;
             }
             '\\' if in_double_quotes => {
-                escape_next = true; // Start an escape sequence
+                escape_next = true; // Start an escape sequence inside double quotes
             }
             '\\' if !in_single_quotes => {
                 current.push('\\'); // Literal backslash outside quotes
@@ -142,6 +142,15 @@ fn split_command_with_quotes(input: &str) -> impl Iterator<Item = String> {
                     current.clear();
                 }
             }
+            c if escape_next => {
+                // Handle escapable sequences
+                match c {
+                    '"' | '\\' | '$' => current.push(c), // Escapable characters
+                    _ => current.push('\\'), // Preserve the backslash if not escapable
+                }
+                current.push(c);
+                escape_next = false;
+            }
             _ => {
                 current.push(c);
                 escape_next = false;
@@ -155,4 +164,6 @@ fn split_command_with_quotes(input: &str) -> impl Iterator<Item = String> {
 
     parts.into_iter()
 }
+
+
 
