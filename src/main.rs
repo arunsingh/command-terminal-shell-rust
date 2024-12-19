@@ -121,35 +121,32 @@ fn split_command_with_quotes(input: &str) -> impl Iterator<Item = String> {
     for c in input.chars() {
         match c {
             '\\' if escape_next => {
+                // Add escaped character
                 current.push('\\');
                 escape_next = false;
             }
-            '\\' if in_double_quotes => {
-                escape_next = true; // Start an escape sequence inside double quotes
-            }
-            '\\' if !in_single_quotes => {
-                escape_next = true; // Start an escape sequence outside quotes
+            '\\' if in_double_quotes || !in_single_quotes => {
+                // Start escape sequence
+                escape_next = true;
             }
             '"' if !in_single_quotes && !escape_next => {
-                in_double_quotes = !in_double_quotes; // Toggle double quotes
+                // Toggle double quotes
+                in_double_quotes = !in_double_quotes;
             }
             '\'' if !in_double_quotes && !escape_next => {
-                in_single_quotes = !in_single_quotes; // Toggle single quotes
+                // Toggle single quotes
+                in_single_quotes = !in_single_quotes;
             }
             ' ' if !in_single_quotes && !in_double_quotes && !escape_next => {
+                // Split arguments
                 if !current.is_empty() {
                     parts.push(current.clone());
                     current.clear();
                 }
             }
             c if escape_next => {
-                // Handle specific escapes in double quotes
-                if in_double_quotes && (c == '"' || c == '\\' || c == '$') {
-                    current.push(c);
-                } else {
-                    current.push('\\'); // Preserve backslash if not followed by escapable char
-                    current.push(c);
-                }
+                // Treat space and other characters as escaped
+                current.push(c);
                 escape_next = false;
             }
             _ => {
