@@ -149,9 +149,8 @@ fn split_command_with_quotes(input: &str) -> impl Iterator<Item = String> {
                     current.clear();
                 }
             }
-            _ if escape_next => {
-                // Treat backslash as literal if not followed by escapable character
-                current.push('\\');
+            c if escape_next => {
+                // Handle escaped characters
                 current.push(c);
                 escape_next = false;
             }
@@ -167,5 +166,6 @@ fn split_command_with_quotes(input: &str) -> impl Iterator<Item = String> {
 
     parts.into_iter()
 }
+
 
 
