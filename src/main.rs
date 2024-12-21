@@ -39,7 +39,9 @@ fn main() {
             } else if command == "type" {
                 if let Some(queried_command) = parts.next() {
                     match queried_command.as_str() {
-                        "echo" | "exit" | "type" | "pwd" | "cd" => println!("{} is a shell builtin", queried_command),
+                        "echo" | "exit" | "type" | "pwd" | "cd" => {
+                            println!("{} is a shell builtin", queried_command)
+                        }
                         _ => {
                             if let Some(path) = find_executable(&queried_command) {
                                 println!("{} is {}", queried_command, path);
@@ -61,12 +63,15 @@ fn main() {
             } else if command == "cd" {
                 if let Some(target_dir) = parts.next() {
                     let path = if target_dir == "~" {
-                        env::var("HOME").map_or_else(|_| Path::new("/").to_path_buf(), |s| Path::new(&s).to_path_buf())
+                        env::var("HOME").map_or_else(
+                            |_| Path::new("/").to_path_buf(),
+                            |s| Path::new(&s).to_path_buf(),
+                        )
                     } else {
                         Path::new(&target_dir).to_path_buf()
                     };
 
-                    if let Err(err) = env::set_current_dir(&path) {
+                    if let Err(_err) = env::set_current_dir(&path) {
                         eprintln!("cd: {}: No such file or directory", target_dir);
                     }
                 } else {
@@ -78,9 +83,7 @@ fn main() {
             // Attempt to execute external commands
             if let Some(path) = find_executable(&command) {
                 let args: Vec<String> = parts.collect();
-                let status = Command::new(path)
-                    .args(&args)
-                    .status();
+                let status = Command::new(path).args(&args).status();
 
                 match status {
                     Ok(exit_status) => {
@@ -99,11 +102,18 @@ fn main() {
     }
 }
 
+/// Attempts to locate an executable in the PATH.
+/// Returns the full path to the executable if found, or None if not found.
 fn find_executable(command: &str) -> Option<String> {
     if let Ok(path_var) = env::var("PATH") {
         for dir in path_var.split(':') {
             let potential_path = Path::new(dir).join(command);
-            if potential_path.is_file() && fs::metadata(&potential_path).map(|m| m.permissions().readonly()).unwrap_or(false) == false {
+            // Must exist, be a file, and have non-readonly permissions (i.e., at least "executable" in a real shell)
+            if potential_path.is_file()
+                && fs::metadata(&potential_path)
+                    .map(|m| !m.permissions().readonly())
+                    .unwrap_or(false)
+            {
                 return Some(potential_path.to_string_lossy().to_string());
             }
         }
@@ -111,56 +121,107 @@ fn find_executable(command: &str) -> Option<String> {
     None
 }
 
+/// Splits the input string into tokens, respecting single quotes, double quotes, and backslash escaping.
+/// - Outside of quotes:
+///   - `\ ` becomes an actual space in the resulting token.
+///   - `\\` becomes a literal `\`.
+///   - `\'` or `\"` etc. becomes `'` or `"`.
+/// - Inside single quotes:
+///   - Everything is literal until the next single quote (except the single quote itself ends the quote).
+/// - Inside double quotes:
+///   - Everything is literal except that backslash can still escape `"` and `\`.
+///
+/// This should match enough of standard POSIX-like shell quoting to pass the required tests.
 fn split_command_with_quotes(input: &str) -> impl Iterator<Item = String> {
     let mut parts = vec![];
     let mut current = String::new();
+
     let mut in_single_quotes = false;
     let mut in_double_quotes = false;
-    let mut escape_next = false;
+    let mut escape_next = false; // signals that the next char is escaped
+    let mut chars = input.chars().peekable();
 
-    for c in input.chars() {
+    while let Some(c) = chars.next() {
+        if escape_next {
+            // We are escaping this character. 
+            // Behavior depends on whether we're in double quotes or not.
+            current.push(c);
+            escape_next = false;
+            continue;
+        }
+
         match c {
-            '\\' if escape_next => {
-                // Append escaped backslash
-                current.push('\\');
-                escape_next = false;
+            // Toggle single quotes if not in double quotes
+            '\'' if !in_double_quotes => {
+                in_single_quotes = !in_single_quotes;
+                // When we exit single quotes, we do not push the quote char itself.
+                // Similarly when we enter, we skip pushing it.
             }
-            '\\' if in_double_quotes || !in_single_quotes => {
-                // Start an escape sequence
-                escape_next = true;
-            }
-            '"' if !in_single_quotes && !escape_next => {
-                // Toggle double quotes
+
+            // Toggle double quotes if not in single quotes
+            '"' if !in_single_quotes => {
                 in_double_quotes = !in_double_quotes;
             }
-            '\'' if !in_double_quotes && !escape_next => {
-                // Toggle single quotes
-                in_single_quotes = !in_single_quotes;
-            }
-            ' ' if escape_next => {
-                // Replace escaped space
-                current.push(' ');
-                escape_next = false;
-            }
-            ' ' if !in_single_quotes && !in_double_quotes => {
-                // Split arguments
-                if !current.is_empty() {
-                    parts.push(current.clone());
-                    current.clear();
+
+            '\\' => {
+                // A backslash can escape something. The logic differs if we're inside single/double quotes or not:
+                if in_single_quotes {
+                    // In single quotes, backslash is literal. We do not do escapes at all.
+                    current.push('\\');
+                } else if in_double_quotes {
+                    // In double quotes, a backslash only escapes \ and ".
+                    // Peek next char to decide.
+                    if let Some(&next_char) = chars.peek() {
+                        if next_char == '\\' || next_char == '"' {
+                            // We skip pushing the backslash and set escape_next, 
+                            // so the next iteration will push the next char as-is.
+                            escape_next = true;
+                        } else {
+                            // If it's not \ or ", treat backslash as literal.
+                            current.push('\\');
+                        }
+                    } else {
+                        // No next char, treat it as literal
+                        current.push('\\');
+                    }
+                } else {
+                    // Outside quotes. A backslash can escape space, or `"` or `'` or `\`.
+                    // Peek next char to decide.
+                    if let Some(&next_char) = chars.peek() {
+                        match next_char {
+                            ' ' | '\'' | '"' | '\\' => {
+                                // Skip the backslash, escape_next = true so next gets literal.
+                                escape_next = true;
+                            }
+                            _ => {
+                                // e.g., \a => we typically just treat this as 'a', ignoring the backslash.
+                                // For simpler shell, let's push next_char and skip the backslash.
+                                escape_next = true;
+                            }
+                        }
+                    } else {
+                        // No next char, treat the single backslash as literal
+                        current.push('\\');
+                    }
                 }
             }
-            c if escape_next => {
-                // Handle backslashes as literals if not escaping specific characters
-                current.push('\\');
-                current.push(c);
-                escape_next = false;
+
+            // If we hit space outside of single or double quotes, this is an argument boundary
+            ' ' if !in_single_quotes && !in_double_quotes => {
+                if !current.is_empty() {
+                    parts.push(current);
+                    current = String::new();
+                }
             }
+
+            // Normal character
             _ => {
                 current.push(c);
             }
         }
     }
 
+    // If there's any leftover in 'current', push it as one final token
     if !current.is_empty() {
         parts.push(current);
     }
